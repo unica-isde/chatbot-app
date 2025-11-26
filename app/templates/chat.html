@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLM Chatbot</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: linear-gradient(135deg, #1f1c2c, #928dab);
+        color: #fff;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+    header {
+        text-align: center;
+        padding: 20px;
+        font-size: 1.8em;
+        font-weight: bold;
+        background: rgba(0,0,0,0.3);
+    }
+    #chat-container {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    .message {
+        max-width: 70%;
+        margin: 10px 0;
+        padding: 12px 16px;
+        border-radius: 12px;
+        line-height: 1.4;
+        word-wrap: break-word;
+    }
+    .user {
+        background: #4e54c8;
+        align-self: flex-end;
+    }
+    .bot {
+        background: #333;
+        align-self: flex-start;
+    }
+    #input-area {
+        display: flex;
+        padding: 15px;
+        background: rgba(0,0,0,0.3);
+    }
+    #message-input {
+        flex: 1;
+        padding: 12px;
+        font-size: 1em;
+        border-radius: 8px;
+        border: none;
+        outline: none;
+    }
+    #send-btn {
+        margin-left: 10px;
+        padding: 12px 20px;
+        font-size: 1em;
+        border: none;
+        border-radius: 8px;
+        background: #4e54c8;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    #send-btn:hover {
+        background: #6c63ff;
+    }
+    pre, code {
+        background: #222;
+        padding: 4px 6px;
+        border-radius: 4px;
+        color: #f8f8f2;
+    }
+</style>
+</head>
+<body>
+<header>LLM Chatbot</header>
+<div id="chat-container"></div>
+<div id="input-area">
+    <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" />
+    <button id="send-btn">Send</button>
+</div>
+
+<!-- Markdown Renderer -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    const ws = new WebSocket("{{ url_for("websocket_endpoint") }}");
+    const chatContainer = document.getElementById("chat-container");
+    const input = document.getElementById("message-input");
+    const sendBtn = document.getElementById("send-btn");
+
+    function addMessage(content, sender) {
+        const div = document.createElement("div");
+        div.className = `message ${sender}`;
+        if (sender === "bot") {
+            div.innerHTML = marked.parse(content);
+        } else {
+            div.textContent = content;
+        }
+        chatContainer.appendChild(div);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function sendMessage() {
+        const text = input.value.trim();
+        if (!text) return;
+        addMessage(text, "user");
+        ws.send(text);
+        input.value = "";
+        input.focus();
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    ws.onmessage = (event) => {
+        if (event.data) {
+            addMessage(event.data, "bot");
+        }
+    };
+
+    ws.onopen = () => console.log("Connected to WebSocket");
+    ws.onerror = (err) => console.error("WebSocket error:", err);
+    ws.onclose = () => console.warn("WebSocket closed");
+</script>
+</body>
+</html>
